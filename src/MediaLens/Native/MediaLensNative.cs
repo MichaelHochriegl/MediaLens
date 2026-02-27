@@ -1,17 +1,11 @@
-using System;
 using System.Runtime.InteropServices;
+// ReSharper disable InconsistentNaming due to MediaInfo library naming conventions
 
 namespace MediaLens.Native;
 
 internal static partial class MediaInfoNative
 {
-#if WINDOWS
-    private const string LibraryName = "MediaInfo.dll";
-#elif OSX
-    private const string LibraryName = "libmediainfo.dylib";
-#else
-    private const string LibraryName = "libmediainfo.so";
-#endif
+    private const string LibraryName = "mediainfo";
 
     internal enum StreamKind
     {
@@ -43,11 +37,9 @@ internal static partial class MediaInfoNative
         => DeleteImpl(handle);
 
     internal static nuint Open(MediaInfoHandle handle, string fileName)
-#if WINDOWS
-        => OpenW(handle, fileName);
-#else
-        => OpenA(handle, fileName);
-#endif
+        => OperatingSystem.IsWindows()
+            ? OpenW(handle, fileName)
+            : OpenA(handle, fileName);
 
     internal static void Close(MediaInfoHandle handle)
         => CloseImpl(handle);
@@ -62,29 +54,23 @@ internal static partial class MediaInfoNative
         string parameter,
         InfoKind infoKind,
         InfoKind searchKind)
-#if WINDOWS
-        => GetW(handle, kind, streamNumber, parameter, infoKind, searchKind);
-#else
-        => GetA(handle, kind, streamNumber, parameter, infoKind, searchKind);
-#endif
+        => OperatingSystem.IsWindows()
+            ? GetW(handle, kind, streamNumber, parameter, infoKind, searchKind)
+            : GetA(handle, kind, streamNumber, parameter, infoKind, searchKind);
 
     internal static IntPtr Option(MediaInfoHandle handle, string option, string? value)
-#if WINDOWS
-        => OptionW(handle, option, value);
-#else
-        => OptionA(handle, option, value);
-#endif
+        => OperatingSystem.IsWindows()
+            ? OptionW(handle, option, value)
+            : OptionA(handle, option, value);
 
     internal static string PtrToString(IntPtr ptr)
     {
         if (ptr == IntPtr.Zero)
             return string.Empty;
 
-#if WINDOWS
-        return Marshal.PtrToStringUni(ptr) ?? string.Empty;
-#else
-        return Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
-#endif
+        return OperatingSystem.IsWindows()
+            ? Marshal.PtrToStringUni(ptr) ?? string.Empty
+            : Marshal.PtrToStringUTF8(ptr) ?? string.Empty;
     }
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_New")]
@@ -99,7 +85,6 @@ internal static partial class MediaInfoNative
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Count_Get")]
     private static partial int CountGetImpl(MediaInfoHandle handle, StreamKind kind, int streamNumber);
 
-#if !WINDOWS
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoA_Open", StringMarshalling = StringMarshalling.Utf8)]
     private static partial nuint OpenA(MediaInfoHandle handle, string fileName);
 
@@ -114,9 +99,7 @@ internal static partial class MediaInfoNative
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoA_Option", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr OptionA(MediaInfoHandle handle, string option, string? value);
-#endif
 
-#if WINDOWS
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoW_Open", StringMarshalling = StringMarshalling.Utf16)]
     private static partial nuint OpenW(MediaInfoHandle handle, string fileName);
 
@@ -131,5 +114,4 @@ internal static partial class MediaInfoNative
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoW_Option", StringMarshalling = StringMarshalling.Utf16)]
     private static partial IntPtr OptionW(MediaInfoHandle handle, string option, string? value);
-#endif
 }
