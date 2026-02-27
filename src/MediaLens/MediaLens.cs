@@ -5,17 +5,8 @@ using MediaLens.Native;
 
 namespace MediaLens;
 
-public sealed class MediaLens : IDisposable
+public sealed class MediaLens
 {
-    private readonly MediaInfoHandle _handle;
-    private bool _disposed;
-
-    public MediaLens()
-    {
-        _handle = MediaInfoHandle.Create();
-
-        MediaInfoNative.Option(_handle, "Language", "raw");
-    }
 
     public MediaInfo Analyze(string filePath)
     {
@@ -24,96 +15,99 @@ public sealed class MediaLens : IDisposable
             throw new FileNotFoundException($"Media file not found: {filePath}");
         }
         
-        if (MediaInfoNative.Open(_handle, filePath) == 0)
+        using var handle = MediaInfoHandle.Create();
+        MediaInfoNative.Option(handle, "Language", "raw");
+        
+        if (MediaInfoNative.Open(handle, filePath) == 0)
             throw new InvalidOperationException($"Failed to open media file: {filePath}");
 
         try
         {
             return new MediaInfo(
-                ParseGeneral(),
-                ParseVideo(),
-                ParseAudio(),
-                ParseText()
+                ParseGeneral(handle),
+                ParseVideo(handle),
+                ParseAudio(handle),
+                ParseText(handle)
             );
         }
         finally
         {
-            MediaInfoNative.Close(_handle);
+            MediaInfoNative.Close(handle);
         }
     }
 
-    private GeneralTrack ParseGeneral()
+    private GeneralTrack ParseGeneral(MediaInfoHandle handle)
         => new(
-            FileName: GetString(MediaInfoNative.StreamKind.General, 0, "FileName") ?? string.Empty,
-            Format: GetString(MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
-            Duration: GetTimeSpan(MediaInfoNative.StreamKind.General, 0, "Duration"),
-            FileSize: GetLong(MediaInfoNative.StreamKind.General, 0, "FileSize") is { } fileSizeBytes ? ByteSize.CreateOrNull(fileSizeBytes) : null,
-            OverallBitRateMode: GetString(MediaInfoNative.StreamKind.General, 0, "OverallBitRate_Mode"),
-            OverallBitRate: GetDouble(MediaInfoNative.StreamKind.General, 0, "OverallBitRate") is {} overallBitRate ? BitRate.CreateOrNull(overallBitRate) : null
+            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? string.Empty,
+            Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
+            Duration: GetTimeSpan(handle, MediaInfoNative.StreamKind.General, 0, "Duration"),
+            FileSize: GetLong(handle, MediaInfoNative.StreamKind.General, 0, "FileSize") is { } fileSizeBytes ? ByteSize.CreateOrNull(fileSizeBytes) : null,
+            OverallBitRateMode: GetString(handle, MediaInfoNative.StreamKind.General, 0, "OverallBitRate_Mode"),
+            OverallBitRate: GetDouble(handle, MediaInfoNative.StreamKind.General, 0, "OverallBitRate") is {} overallBitRate ? BitRate.CreateOrNull(overallBitRate) : null
         );
 
-    private VideoTrack? ParseVideo()
+    private VideoTrack? ParseVideo(MediaInfoHandle handle)
     {
-        if (GetStreamCount(MediaInfoNative.StreamKind.Video) == 0)
+        if (GetStreamCount(handle, MediaInfoNative.StreamKind.Video) == 0)
             return null;
 
         return new VideoTrack(
-            Format: GetString(MediaInfoNative.StreamKind.Video, 0, "Format") ?? string.Empty,
-            CodecId: GetString(MediaInfoNative.StreamKind.Video, 0, "CodecID") ?? string.Empty,
-            Language: GetString(MediaInfoNative.StreamKind.Video, 0, "Language"),
-            FrameRate: GetDouble(MediaInfoNative.StreamKind.Video, 0, "FrameRate") is {} frameRate ? FrameRate.CreateOrNull(frameRate) : null,
-            FrameRateMode: GetString(MediaInfoNative.StreamKind.Video, 0, "FrameRate_Mode"),
-            Width: GetInt(MediaInfoNative.StreamKind.Video, 0, "Width"),
-            Height: GetInt(MediaInfoNative.StreamKind.Video, 0, "Height"),
-            BitRate: GetDouble(MediaInfoNative.StreamKind.Video, 0, "BitRate") is {} bitRate ? BitRate.CreateOrNull(bitRate) : null,
-            AspectRatio: GetString(MediaInfoNative.StreamKind.Video, 0, "DisplayAspectRatio")
+            Format: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Format") ?? string.Empty,
+            CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "CodecID") ?? string.Empty,
+            Language: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Language"),
+            FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate") is {} frameRate ? FrameRate.CreateOrNull(frameRate) : null,
+            FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate_Mode"),
+            Width: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Width"),
+            Height: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Height"),
+            BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "BitRate") is {} bitRate ? BitRate.CreateOrNull(bitRate) : null,
+            AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "DisplayAspectRatio")
         );
     }
 
-    private AudioTrack[] ParseAudio()
+    private AudioTrack[] ParseAudio(MediaInfoHandle handle)
     {
-        var count = GetStreamCount(MediaInfoNative.StreamKind.Audio);
+        var count = GetStreamCount(handle, MediaInfoNative.StreamKind.Audio);
         var list = new List<AudioTrack>(count);
 
         for (int i = 0; i < count; i++)
         {
             list.Add(new AudioTrack(
-                Format: GetString(MediaInfoNative.StreamKind.Audio, i, "Format") ?? string.Empty,
-                CodecId: GetString(MediaInfoNative.StreamKind.Audio, i, "CodecID") ?? string.Empty,
-                Language: GetString(MediaInfoNative.StreamKind.Audio, i, "Language"),
-                Channels: GetInt(MediaInfoNative.StreamKind.Audio, i, "Channels"),
-                ChannelLayout: GetString(MediaInfoNative.StreamKind.Audio, i, "ChannelLayout"),
-                SamplingRate: GetDouble(MediaInfoNative.StreamKind.Audio, i, "SamplingRate") is {} samplingRate ? Frequency.CreateOrNull(samplingRate) : null,
-                BitRate: GetDouble(MediaInfoNative.StreamKind.Audio, i, "BitRate") is {} bitRate ? BitRate.CreateOrNull(bitRate) : null
+                Format: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Format") ?? string.Empty,
+                CodecId: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "CodecID") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Language"),
+                Channels: GetInt(handle, MediaInfoNative.StreamKind.Audio, i, "Channels"),
+                ChannelLayout: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "ChannelLayout"),
+                SamplingRate: GetDouble(handle, MediaInfoNative.StreamKind.Audio, i, "SamplingRate") is {} samplingRate ? Frequency.CreateOrNull(samplingRate) : null,
+                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Audio, i, "BitRate") is {} bitRate ? BitRate.CreateOrNull(bitRate) : null
             ));
         }
 
         return list.ToArray();
     }
 
-    private TextTrack[] ParseText()
+    private TextTrack[] ParseText(MediaInfoHandle handle)
     {
-        var count = GetStreamCount(MediaInfoNative.StreamKind.Text);
+        var count = GetStreamCount(handle, MediaInfoNative.StreamKind.Text);
         var list = new List<TextTrack>(count);
 
         for (int i = 0; i < count; i++)
         {
             list.Add(new TextTrack(
-                Format: GetString(MediaInfoNative.StreamKind.Text, i, "Format") ?? string.Empty,
-                Language: GetString(MediaInfoNative.StreamKind.Text, i, "Language")
+                Format: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Format") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Language")
             ));
         }
 
         return list.ToArray();
     }
 
-    private int GetStreamCount(MediaInfoNative.StreamKind kind)
-        => MediaInfoNative.CountGet(_handle, kind, -1);
+    private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
+        => MediaInfoNative.CountGet(handle, kind, -1);
 
-    private string? GetString(MediaInfoNative.StreamKind kind, int index, string name)
+    private string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
     {
         var ptr = MediaInfoNative.Get(
-            _handle,
+            handle,
             kind,
             index,
             name,
@@ -124,29 +118,20 @@ public sealed class MediaLens : IDisposable
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private int? GetInt(MediaInfoNative.StreamKind kind, int index, string name)
-        => int.TryParse(GetString(kind, index, name),
+    private int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => int.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
 
-    private long? GetLong(MediaInfoNative.StreamKind kind, int index, string name)
-        => long.TryParse(GetString(kind, index, name),
+    private long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => long.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
 
-    private double? GetDouble(MediaInfoNative.StreamKind kind, int index, string name)
-        => double.TryParse(GetString(kind, index, name),
+    private double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => double.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : null;
 
-    private TimeSpan? GetTimeSpan(MediaInfoNative.StreamKind kind, int index, string name)
-        => GetDouble(kind, index, name) is { } ms
+    private TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => GetDouble(handle, kind, index, name) is { } ms
             ? TimeSpan.FromMilliseconds(ms)
             : null;
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        _handle.Dispose();
-    }
 }
