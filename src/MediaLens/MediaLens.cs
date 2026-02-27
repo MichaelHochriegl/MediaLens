@@ -19,6 +19,11 @@ public sealed class MediaLens : IDisposable
 
     public MediaInfo Analyze(string filePath)
     {
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Media file not found: {filePath}");
+        }
+        
         if (MediaInfoNative.Open(_handle, filePath) == 0)
             throw new InvalidOperationException($"Failed to open media file: {filePath}");
 
