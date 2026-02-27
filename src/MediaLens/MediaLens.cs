@@ -67,7 +67,7 @@ public sealed class MediaLens
     private AudioTrack[] ParseAudio(MediaInfoHandle handle)
     {
         var count = GetStreamCount(handle, MediaInfoNative.StreamKind.Audio);
-        var list = new List<AudioTrack>(count);
+        var list = new List<AudioTrack>(Math.Max(0, count));
 
         for (int i = 0; i < count; i++)
         {
@@ -88,7 +88,7 @@ public sealed class MediaLens
     private TextTrack[] ParseText(MediaInfoHandle handle)
     {
         var count = GetStreamCount(handle, MediaInfoNative.StreamKind.Text);
-        var list = new List<TextTrack>(count);
+        var list = new List<TextTrack>(Math.Max(0, count));
 
         for (int i = 0; i < count; i++)
         {
