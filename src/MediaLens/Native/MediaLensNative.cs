@@ -30,7 +30,7 @@ internal static partial class MediaInfoNative
         HowTo = 7
     }
 
-    internal static IntPtr New()
+    internal static MediaInfoHandle New()
         => NewImpl();
 
     internal static void Delete(IntPtr handle)
@@ -74,7 +74,7 @@ internal static partial class MediaInfoNative
     }
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_New")]
-    private static partial IntPtr NewImpl();
+    private static partial MediaInfoHandle NewImpl();
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Delete")]
     private static partial void DeleteImpl(IntPtr handle);
