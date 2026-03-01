@@ -11,7 +11,7 @@ public sealed class MediaLens
     {
         if (!File.Exists(filePath))
         {
-            throw new FileNotFoundException($"Media file not found: {filePath}");
+            throw new FileNotFoundException($"Media file not found.", filePath);
         }
 
         using var handle = MediaInfoNative.New();
