@@ -57,7 +57,7 @@ public sealed class MediaLens
 
     private VideoTrack? ParseVideo(MediaInfoHandle handle)
     {
-        if (GetStreamCount(handle, MediaInfoNative.StreamKind.Video) == 0)
+        if (GetStreamCount(handle, MediaInfoNative.StreamKind.Video) <= 0)
             return null;
 
         return new VideoTrack(
