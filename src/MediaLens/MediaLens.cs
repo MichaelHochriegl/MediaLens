@@ -19,11 +19,6 @@ public sealed class MediaLens
         {
             throw new InvalidOperationException("Failed to create MediaInfo handle.");
         }
-
-        if (handle.IsClosed)
-        {
-            throw new ObjectDisposedException(nameof(MediaInfoNative));
-        }
         
         MediaInfoNative.Option(handle, "Language", "raw");
 
