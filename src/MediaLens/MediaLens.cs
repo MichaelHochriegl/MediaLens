@@ -126,7 +126,7 @@ public sealed class MediaLens : IMediaLens
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
-        if (count == 0)
+        if (count <= 0)
         {
             return [];
         }
@@ -157,7 +157,7 @@ public sealed class MediaLens : IMediaLens
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
-        if (count == 0)
+        if (count <= 0)
         {
             return [];
         }
