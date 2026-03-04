@@ -105,19 +105,19 @@ public sealed class MediaLens : IMediaLens
         for (int i = 0; i < count; i++)
         {
             result[i] = new VideoTrack(
-                Format: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Format") ?? string.Empty,
-                CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "CodecID") ?? string.Empty,
-                Language: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Language"),
-                FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate") is { } frameRate
+                Format: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Format") ?? string.Empty,
+                CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, i, "CodecID") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Language"),
+                FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, i, "FrameRate") is { } frameRate
                     ? FrameRate.CreateOrNull(frameRate)
                     : null,
-                FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate_Mode"),
-                Width: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Width"),
-                Height: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Height"),
-                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "BitRate") is { } bitRate
+                FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, i, "FrameRate_Mode"),
+                Width: GetInt(handle, MediaInfoNative.StreamKind.Video, i, "Width"),
+                Height: GetInt(handle, MediaInfoNative.StreamKind.Video, i, "Height"),
+                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, i, "BitRate") is { } bitRate
                     ? BitRate.CreateOrNull(bitRate)
                     : null,
-                AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "DisplayAspectRatio")
+                AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, i, "DisplayAspectRatio")
             );
         }
 
