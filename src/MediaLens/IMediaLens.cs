@@ -52,12 +52,8 @@ public interface IMediaLens
     /// When this method returns, contains the <see cref="MediaInfo"/> metadata for the media file
     /// if the operation was successful; otherwise, <c>null</c>.
     /// </param>
-    /// <param name="error">
-    /// When this method returns, contains the <see cref="MediaLensException"/> describing the
-    /// error that occurred if the operation failed; otherwise, <c>null</c>.
-    /// </param>
     /// <returns>
     /// <c>true</c> if the media file was successfully inspected; otherwise, <c>false</c>.
     /// </returns>
-    bool TryInspect(string filePath, out MediaInfo? info, out MediaLensException? error);
+    bool TryInspect(string filePath, out MediaInfo? info);
 }

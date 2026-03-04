@@ -60,18 +60,16 @@ public sealed class MediaLens : IMediaLens
         }
     }
 
-    public bool TryInspect(string filePath, out MediaInfo? info, out MediaLensException? error)
+    public bool TryInspect(string filePath, out MediaInfo? info)
     {
         try
         {
             info = Inspect(filePath);
-            error = null;
             return true;
         }
         catch (MediaLensException ex)
         {
             info = null;
-            error = ex;
             return false;
         }
     }
