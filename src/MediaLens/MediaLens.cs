@@ -7,7 +7,7 @@ namespace MediaLens;
 
 public sealed class MediaLens
 {
-    public MediaInfo Analyze(string filePath)
+    public MediaInfo Inspect(string filePath)
     {
         if (!File.Exists(filePath))
         {
