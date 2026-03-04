@@ -1,4 +1,5 @@
 using System.Globalization;
+using MediaLens.Exceptions;
 using MediaLens.Models;
 using MediaLens.Models.ValueObjects;
 using MediaLens.Native;
@@ -9,34 +10,69 @@ public sealed class MediaLens
 {
     public MediaInfo Inspect(string filePath)
     {
+        ArgumentNullException.ThrowIfNull(filePath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
         if (!File.Exists(filePath))
         {
-            throw new FileNotFoundException($"Media file not found.", filePath);
+            throw new FileNotFoundException("Media file not found.", filePath);
         }
 
-        using var handle = MediaInfoNative.New();
-        if (handle.IsInvalid)
-        {
-            throw new InvalidOperationException("Failed to create MediaInfo handle.");
-        }
-
-        MediaInfoNative.Option(handle, "Language", "raw");
-
-        if (MediaInfoNative.Open(handle, filePath) == 0)
-            throw new InvalidOperationException($"Failed to open media file: {filePath}");
-
+        MediaInfoHandle handle;
         try
         {
-            return new MediaInfo(
-                ParseGeneral(handle),
-                ParseVideos(handle),
-                ParseAudio(handle),
-                ParseText(handle)
-            );
+            handle = MediaInfoNative.New();
         }
-        finally
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
-            MediaInfoNative.Close(handle);
+            throw new MediaLensNativeDependencyException(
+                "Failed to load the native MediaInfo dependency. Ensure the correct native library is available for the current OS/architecture.",
+                ex);
+        }
+
+        using (handle)
+        {
+            if (handle.IsInvalid)
+            {
+                throw new MediaLensHandleException("Failed to create a native MediaInfo handle.");
+            }
+
+            MediaInfoNative.Option(handle, "Language", "raw");
+
+            if (MediaInfoNative.Open(handle, filePath) == 0)
+            {
+                throw new MediaLensOpenException(filePath, "Failed to open the media file.");
+            }
+
+            try
+            {
+                return new MediaInfo(
+                    ParseGeneral(handle),
+                    ParseVideos(handle),
+                    ParseAudio(handle),
+                    ParseText(handle)
+                );
+            }
+            finally
+            {
+                MediaInfoNative.Close(handle);
+            }
+        }
+    }
+
+    public bool TryInspect(string filePath, out MediaInfo? info, out MediaLensException? error)
+    {
+        try
+        {
+            info = Inspect(filePath);
+            error = null;
+            return true;
+        }
+        catch (MediaLensException ex)
+        {
+            info = null;
+            error = ex;
+            return false;
         }
     }
 
