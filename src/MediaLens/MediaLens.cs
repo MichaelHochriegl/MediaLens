@@ -6,7 +6,7 @@ using MediaLens.Native;
 
 namespace MediaLens;
 
-public sealed class MediaLens
+public sealed class MediaLens : IMediaLens
 {
     public MediaInfo Inspect(string filePath)
     {
