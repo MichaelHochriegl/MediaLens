@@ -19,7 +19,7 @@ public sealed class MediaLens
         {
             throw new InvalidOperationException("Failed to create MediaInfo handle.");
         }
-        
+
         MediaInfoNative.Option(handle, "Language", "raw");
 
         if (MediaInfoNative.Open(handle, filePath) == 0)
@@ -29,7 +29,7 @@ public sealed class MediaLens
         {
             return new MediaInfo(
                 ParseGeneral(handle),
-                ParseVideo(handle),
+                ParseVideos(handle),
                 ParseAudio(handle),
                 ParseText(handle)
             );
@@ -55,26 +55,37 @@ public sealed class MediaLens
                 : null
         );
 
-    private VideoTrack? ParseVideo(MediaInfoHandle handle)
+    private VideoTrack[] ParseVideos(MediaInfoHandle handle)
     {
-        if (GetStreamCount(handle, MediaInfoNative.StreamKind.Video) <= 0)
-            return null;
+        var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
-        return new VideoTrack(
-            Format: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Format") ?? string.Empty,
-            CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "CodecID") ?? string.Empty,
-            Language: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Language"),
-            FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate") is { } frameRate
-                ? FrameRate.CreateOrNull(frameRate)
-                : null,
-            FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate_Mode"),
-            Width: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Width"),
-            Height: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Height"),
-            BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "BitRate") is { } bitRate
-                ? BitRate.CreateOrNull(bitRate)
-                : null,
-            AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "DisplayAspectRatio")
-        );
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var result = new VideoTrack[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = new VideoTrack(
+                Format: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Format") ?? string.Empty,
+                CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "CodecID") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "Language"),
+                FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate") is { } frameRate
+                    ? FrameRate.CreateOrNull(frameRate)
+                    : null,
+                FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "FrameRate_Mode"),
+                Width: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Width"),
+                Height: GetInt(handle, MediaInfoNative.StreamKind.Video, 0, "Height"),
+                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, 0, "BitRate") is { } bitRate
+                    ? BitRate.CreateOrNull(bitRate)
+                    : null,
+                AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, 0, "DisplayAspectRatio")
+            );
+        }
+
+        return result;
     }
 
     private AudioTrack[] ParseAudio(MediaInfoHandle handle)
@@ -85,7 +96,7 @@ public sealed class MediaLens
         {
             return [];
         }
-        
+
         var result = new AudioTrack[count];
 
         for (var i = 0; i < count; i++)
@@ -111,7 +122,7 @@ public sealed class MediaLens
     private TextTrack[] ParseText(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
-        
+
         if (count == 0)
         {
             return [];

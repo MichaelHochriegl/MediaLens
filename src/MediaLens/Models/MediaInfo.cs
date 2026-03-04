@@ -2,7 +2,7 @@ namespace MediaLens.Models;
 
 public sealed record MediaInfo(
     GeneralTrack General,
-    VideoTrack? Video,
-    AudioTrack[] Audio,
-    TextTrack[] Text
+    IReadOnlyList<VideoTrack> Videos,
+    IReadOnlyList<AudioTrack> Audio,
+    IReadOnlyList<TextTrack> Text
 );
