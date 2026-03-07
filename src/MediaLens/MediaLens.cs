@@ -99,7 +99,7 @@ public sealed class MediaLens : IMediaLens
 
         var result = new VideoTrack[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             result[i] = new VideoTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Format") ?? string.Empty,
