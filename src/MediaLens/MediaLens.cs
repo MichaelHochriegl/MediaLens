@@ -47,9 +47,9 @@ public sealed class MediaLens : IMediaLens
             {
                 return new MediaInfo(
                     ParseGeneral(handle),
-                    ParseVideos(handle),
-                    ParseAudio(handle),
-                    ParseText(handle)
+                    ParseVideoTracks(handle),
+                    ParseAudioTracks(handle),
+                    ParseTextTracks(handle)
                 );
             }
             finally
@@ -88,7 +88,7 @@ public sealed class MediaLens : IMediaLens
                 : null
         );
 
-    private VideoTrack[] ParseVideos(MediaInfoHandle handle)
+    private VideoTrack[] ParseVideoTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
@@ -121,7 +121,7 @@ public sealed class MediaLens : IMediaLens
         return result;
     }
 
-    private AudioTrack[] ParseAudio(MediaInfoHandle handle)
+    private AudioTrack[] ParseAudioTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
@@ -152,7 +152,7 @@ public sealed class MediaLens : IMediaLens
         return result;
     }
 
-    private TextTrack[] ParseText(MediaInfoHandle handle)
+    private TextTrack[] ParseTextTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
