@@ -66,7 +66,7 @@ public sealed class MediaLens : IMediaLens
             info = Inspect(filePath);
             return true;
         }
-        catch (MediaLensException)
+        catch (Exception ex) when (ex is FileNotFoundException or MediaLensException)
         {
             info = null;
             return false;
