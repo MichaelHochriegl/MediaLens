@@ -104,7 +104,9 @@ public sealed class MediaLens : IMediaLens
             result[i] = new VideoTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Format") ?? string.Empty,
                 CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, i, "CodecID") ?? string.Empty,
-                Language: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Language"),
+                Language: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null,
                 FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, i, "FrameRate") is { } frameRate
                     ? FrameRate.CreateOrNull(frameRate)
                     : null,
@@ -137,7 +139,9 @@ public sealed class MediaLens : IMediaLens
             result[i] = new AudioTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Format") ?? string.Empty,
                 CodecId: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "CodecID") ?? string.Empty,
-                Language: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Language"),
+                Language: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null,
                 Channels: GetInt(handle, MediaInfoNative.StreamKind.Audio, i, "Channels"),
                 ChannelLayout: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "ChannelLayout"),
                 SamplingRate: GetDouble(handle, MediaInfoNative.StreamKind.Audio, i, "SamplingRate") is { } samplingRate
@@ -167,7 +171,9 @@ public sealed class MediaLens : IMediaLens
         {
             result[i] = new TextTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Format") ?? string.Empty,
-                Language: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Language")
+                Language: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null
             );
         }
 
