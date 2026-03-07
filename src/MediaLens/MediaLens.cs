@@ -10,7 +10,6 @@ public sealed class MediaLens : IMediaLens
 {
     public MediaInfo Inspect(string filePath)
     {
-        ArgumentNullException.ThrowIfNull(filePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
         if (!File.Exists(filePath))
