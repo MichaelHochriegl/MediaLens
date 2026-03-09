@@ -6,4 +6,5 @@
     <Project Path="src/MediaLens.DependencyInjection/MediaLens.DependencyInjection.csproj" />
     <Project Path="src/MediaLens/MediaLens.csproj" />
   </Folder>
+  <Folder Name="/tests/" />
 </Solution>
