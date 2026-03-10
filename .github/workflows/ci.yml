@@ -60,7 +60,6 @@ jobs:
             --configuration $CONFIGURATION \
             --no-build \
             --results-directory ./TestResults \
-            -- \
             --report-trx \
             --coverage \
             --coverage-output-format cobertura \
