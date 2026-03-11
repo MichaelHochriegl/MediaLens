@@ -14,9 +14,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="..\..\examples\example-video.webm" Link="example-video.webm">
+        <Content Include="..\..\examples\example-video.webm">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
+        </Content>
     </ItemGroup>
 
 </Project>
