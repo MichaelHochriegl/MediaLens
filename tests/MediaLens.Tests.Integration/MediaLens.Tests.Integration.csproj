@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="TUnit" Version="0.16.0"/>
-        <PackageReference Include="Verify.TUnit" Version="28.13.0"/>
+        <PackageReference Include="TUnit" Version="1.19.22" />
+        <PackageReference Include="Verify.TUnit" Version="31.13.2" />
         <ProjectReference Include="..\..\src\MediaLens\MediaLens.csproj" />
     </ItemGroup>
 
