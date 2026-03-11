@@ -59,6 +59,7 @@ jobs:
           dotnet test \
             --configuration $CONFIGURATION \
             --no-build \
+            -- \
             --results-directory ./TestResults \
             --report-trx \
             --coverage \
