@@ -21,7 +21,6 @@ public class MediaLensIntegrationTests
         // Assert
         await Assert.That(info).IsNotNull();
         await Verify(info)
-            .UseFileName(SampleFileName)
             .ScrubMember<GeneralTrack>(g => g.FileName);
     }
 
@@ -41,9 +40,7 @@ public class MediaLensIntegrationTests
         await Assert.That(success).IsTrue();
         await Assert.That(info).IsNotNull();
         
-        // Use the same snapshot logic as Inspect to avoid duplication
         await Verify(info)
-            .UseFileName(SampleFileName)
             .ScrubMember<GeneralTrack>(g => g.FileName);
     }
 }
