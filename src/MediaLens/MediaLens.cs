@@ -181,7 +181,7 @@ public sealed class MediaLens : IMediaLens
     }
 
     private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
-        => MediaInfoNative.CountGet(handle, kind, -1);
+        => MediaInfoNative.CountGet(handle, kind, nuint.MaxValue);
 
     private string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
     {
