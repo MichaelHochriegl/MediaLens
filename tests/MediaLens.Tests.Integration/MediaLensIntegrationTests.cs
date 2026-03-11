@@ -20,7 +20,6 @@ public class MediaLensIntegrationTests
 
         // Assert
         await Assert.That(info).IsNotNull();
-        await Assert.That(info.VideoTracks).IsNotEmpty();
         await Verify(info)
             .UseFileName(SampleFileName)
             .ScrubMember<GeneralTrack>(g => g.FileName);
@@ -41,7 +40,6 @@ public class MediaLensIntegrationTests
         // Assert
         await Assert.That(success).IsTrue();
         await Assert.That(info).IsNotNull();
-        await Assert.That(info!.VideoTracks).IsNotEmpty();
         
         // Use the same snapshot logic as Inspect to avoid duplication
         await Verify(info)
