@@ -46,7 +46,7 @@ internal static partial class MediaInfoNative
         => CloseImpl(handle);
 
     internal static int CountGet(MediaInfoHandle handle, StreamKind kind, nuint streamNumber)
-        => CountGetImpl(handle, kind, streamNumber);
+        => checked((int)CountGetImpl(handle, kind, streamNumber));
 
     internal static IntPtr Get(
         MediaInfoHandle handle,
@@ -84,7 +84,7 @@ internal static partial class MediaInfoNative
     private static partial void CloseImpl(MediaInfoHandle handle);
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Count_Get")]
-    private static partial int CountGetImpl(MediaInfoHandle handle, StreamKind kind, nuint streamNumber);
+    private static partial nuint CountGetImpl(MediaInfoHandle handle, StreamKind kind, nuint streamNumber);
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoA_Open", StringMarshalling = StringMarshalling.Utf8)]
     private static partial nuint OpenA(MediaInfoHandle handle, string fileName);
