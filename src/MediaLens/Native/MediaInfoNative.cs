@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+
 // ReSharper disable InconsistentNaming due to MediaInfo library naming conventions
 
 namespace MediaLens.Native;
@@ -44,7 +45,7 @@ internal static partial class MediaInfoNative
     internal static void Close(MediaInfoHandle handle)
         => CloseImpl(handle);
 
-    internal static int CountGet(MediaInfoHandle handle, StreamKind kind, int streamNumber)
+    internal static int CountGet(MediaInfoHandle handle, StreamKind kind, nuint streamNumber)
         => CountGetImpl(handle, kind, streamNumber);
 
     internal static IntPtr Get(
@@ -83,7 +84,7 @@ internal static partial class MediaInfoNative
     private static partial void CloseImpl(MediaInfoHandle handle);
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Count_Get")]
-    private static partial int CountGetImpl(MediaInfoHandle handle, StreamKind kind, int streamNumber);
+    private static partial int CountGetImpl(MediaInfoHandle handle, StreamKind kind, nuint streamNumber);
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoA_Open", StringMarshalling = StringMarshalling.Utf8)]
     private static partial nuint OpenA(MediaInfoHandle handle, string fileName);
