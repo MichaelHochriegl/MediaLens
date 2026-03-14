@@ -79,10 +79,10 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration $CONFIGURATION --no-restore
+        run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
 
       - name: Test
-        run: dotnet test --configuration $CONFIGURATION --no-build --results-directory ./TestResults --report-trx --coverage --coverage-output-format cobertura --coverage-output ./TestResults/coverage.cobertura.xml
+        run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --results-directory ./TestResults --report-trx --coverage --coverage-output-format cobertura --coverage-output ./TestResults/coverage.cobertura.xml
 
       - name: Publish test results
         if: always()
@@ -135,7 +135,7 @@ jobs:
 
           for proj in $PACK_PROJECTS; do
             echo "Packing $proj with version $packageVersion"
-            dotnet pack "$proj" --configuration "$CONFIGURATION" --no-restore --no-build --include-source --output ./artifacts -p:PackageVersion="$packageVersion"
+            dotnet pack "$proj" --configuration "${{ env.CONFIGURATION }}" --no-restore --no-build --include-source --output ./artifacts -p:PackageVersion="$packageVersion"
           done
 
       - name: Upload NuGet artifacts
@@ -193,7 +193,7 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration $CONFIGURATION --no-restore
+        run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
 
       - name: Create release NuGet packages
         shell: bash
@@ -205,7 +205,7 @@ jobs:
 
           for proj in $PACK_PROJECTS; do
             echo "Packing $proj with version $VERSION"
-            dotnet pack "$proj" --configuration "$CONFIGURATION" --no-restore --no-build --include-source --output ./nupkg -p:PackageVersion="$VERSION" -p:PackageReleaseNotes="See full release notes at: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
+            dotnet pack "$proj" --configuration "${{ env.CONFIGURATION }}" --no-restore --no-build --include-source --output ./nupkg -p:PackageVersion="$VERSION" -p:PackageReleaseNotes="See full release notes at: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
           done
 
       - name: Push to GitHub Packages
