@@ -6,7 +6,38 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
+    
+    <!-- NuGet settings -->
+    <PropertyGroup>
+        <PackageId>MediaLens</PackageId>
+        <Title>MediaLens</Title>
+        <Description>.NET wrapper for MediaLens.Native to inspect media files and retrieve metadata.</Description>
+        <Authors>Michael Hochriegl</Authors>
+        <PackageTags>medialens mediainfo media metadata native-wrapper</PackageTags>
 
+        <PackageProjectUrl>https://github.com/MichaelHochriegl/MediaLens</PackageProjectUrl>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/MichaelHochriegl/MediaLens</RepositoryUrl>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageIcon>logo_128x128.png</PackageIcon>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+
+        <Copyright>Copyright © $([System.DateTime]::Now.Year) Michael Hochriegl</Copyright>
+
+        <DebugType>embedded</DebugType>
+    </PropertyGroup>
+
+    <!-- Add Metadata to the NuGet Package -->
+    <ItemGroup>
+        <None Include="../../LICENSE" Pack="true" PackagePath="\"/>
+        <None Include="../../LICENSE.MediaInfo" Pack="true" PackagePath="\"/>
+        <None Include="../../README.md" Pack="true" PackagePath="\"/>
+        <None Include="../../assets/logo_128x128.png" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+    
     <ItemGroup>
       <PackageReference Include="MediaLens.Native" Version="0.0.1-alpha.5" />
     </ItemGroup>
