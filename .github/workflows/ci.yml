@@ -85,7 +85,7 @@ jobs:
         run: dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --results-directory ./TestResults --report-trx --coverage --coverage-output-format cobertura --coverage-output ./TestResults/coverage.cobertura.xml
 
       - name: Publish test results
-        if: always()
+        if: always() && matrix.os == 'ubuntu-latest'
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: ./TestResults/**/*.trx
