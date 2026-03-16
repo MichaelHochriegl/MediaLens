@@ -51,6 +51,7 @@ jobs:
           - ubuntu-latest
           - windows-latest
           - macos-26-intel
+          - macos-latest
 
     permissions:
       contents: read
