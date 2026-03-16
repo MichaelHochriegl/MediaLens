@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using MediaLens.Exceptions;
 using MediaLens.Models;
@@ -88,7 +89,7 @@ public sealed class MediaLens : IMediaLens
                 : null
         );
 
-    private VideoTrack[] ParseVideoTracks(MediaInfoHandle handle)
+    private ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
@@ -120,10 +121,10 @@ public sealed class MediaLens : IMediaLens
             );
         }
 
-        return result;
+        return [..result];
     }
 
-    private AudioTrack[] ParseAudioTracks(MediaInfoHandle handle)
+    private ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
@@ -153,10 +154,10 @@ public sealed class MediaLens : IMediaLens
             );
         }
 
-        return result;
+        return [..result];
     }
 
-    private TextTrack[] ParseTextTracks(MediaInfoHandle handle)
+    private ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
@@ -177,7 +178,7 @@ public sealed class MediaLens : IMediaLens
             );
         }
 
-        return result;
+        return [..result];
     }
 
     private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
