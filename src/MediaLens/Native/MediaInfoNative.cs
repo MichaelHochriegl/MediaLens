@@ -101,10 +101,10 @@ internal static partial class MediaInfoNative
     [LibraryImport(LibraryName, EntryPoint = "MediaInfoA_Option", StringMarshalling = StringMarshalling.Utf8)]
     private static partial IntPtr OptionA(MediaInfoHandle handle, string option, string? value);
 
-    [LibraryImport(LibraryName, EntryPoint = "MediaInfoW_Open", StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Open", StringMarshalling = StringMarshalling.Utf16)]
     private static partial nuint OpenW(MediaInfoHandle handle, string fileName);
 
-    [LibraryImport(LibraryName, EntryPoint = "MediaInfoW_Get", StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Get", StringMarshalling = StringMarshalling.Utf16)]
     private static partial IntPtr GetW(
         MediaInfoHandle handle,
         StreamKind kind,
@@ -113,6 +113,6 @@ internal static partial class MediaInfoNative
         InfoKind infoKind,
         InfoKind searchKind);
 
-    [LibraryImport(LibraryName, EntryPoint = "MediaInfoW_Option", StringMarshalling = StringMarshalling.Utf16)]
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Option", StringMarshalling = StringMarshalling.Utf16)]
     private static partial IntPtr OptionW(MediaInfoHandle handle, string option, string? value);
 }
