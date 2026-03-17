@@ -100,7 +100,6 @@ public sealed class MediaLens : IMediaLens
         
         var builder = ImmutableArray.CreateBuilder<VideoTrack>(count);
 
-
         for (var i = 0; i < count; i++)
         {
             var track = new VideoTrack(
