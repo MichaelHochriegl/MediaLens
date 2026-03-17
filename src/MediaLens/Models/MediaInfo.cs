@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace MediaLens.Models;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace MediaLens.Models;
 /// <param name="TextTracks">The text tracks of the media file.</param>
 public sealed record MediaInfo(
     GeneralTrack General,
-    IReadOnlyList<VideoTrack> VideoTracks,
-    IReadOnlyList<AudioTrack> AudioTracks,
-    IReadOnlyList<TextTrack> TextTracks
+    ImmutableArray<VideoTrack> VideoTracks,
+    ImmutableArray<AudioTrack> AudioTracks,
+    ImmutableArray<TextTrack> TextTracks
 );

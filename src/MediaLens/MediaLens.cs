@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Globalization;
 using MediaLens.Exceptions;
 using MediaLens.Models;
@@ -88,7 +89,7 @@ public sealed class MediaLens : IMediaLens
                 : null
         );
 
-    private VideoTrack[] ParseVideoTracks(MediaInfoHandle handle)
+    private ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
@@ -96,12 +97,12 @@ public sealed class MediaLens : IMediaLens
         {
             return [];
         }
-
-        var result = new VideoTrack[count];
+        
+        var builder = ImmutableArray.CreateBuilder<VideoTrack>(count);
 
         for (var i = 0; i < count; i++)
         {
-            result[i] = new VideoTrack(
+            var track = new VideoTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Format") ?? string.Empty,
                 CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, i, "CodecID") ?? string.Empty,
                 Language: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Language") is { } language
@@ -118,12 +119,14 @@ public sealed class MediaLens : IMediaLens
                     : null,
                 AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, i, "DisplayAspectRatio")
             );
+            
+            builder.Add(track);
         }
 
-        return result;
+        return builder.ToImmutable();
     }
 
-    private AudioTrack[] ParseAudioTracks(MediaInfoHandle handle)
+    private ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
@@ -131,12 +134,12 @@ public sealed class MediaLens : IMediaLens
         {
             return [];
         }
-
-        var result = new AudioTrack[count];
+        
+        var builder = ImmutableArray.CreateBuilder<AudioTrack>(count);
 
         for (var i = 0; i < count; i++)
         {
-            result[i] = new AudioTrack(
+            var track = new AudioTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Format") ?? string.Empty,
                 CodecId: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "CodecID") ?? string.Empty,
                 Language: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Language") is { } language
@@ -151,12 +154,14 @@ public sealed class MediaLens : IMediaLens
                     ? BitRate.CreateOrNull(bitRate)
                     : null
             );
+            
+            builder.Add(track);
         }
 
-        return result;
+        return builder.ToImmutable();
     }
 
-    private TextTrack[] ParseTextTracks(MediaInfoHandle handle)
+    private ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
@@ -165,19 +170,21 @@ public sealed class MediaLens : IMediaLens
             return [];
         }
 
-        var result = new TextTrack[count];
+        var builder = ImmutableArray.CreateBuilder<TextTrack>(count);
 
         for (var i = 0; i < count; i++)
         {
-            result[i] = new TextTrack(
+            var track = new TextTrack(
                 Format: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Format") ?? string.Empty,
                 Language: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Language") is { } language
                     ? Language.CreateOrNull(language)
                     : null
             );
+            
+            builder.Add(track);
         }
 
-        return result;
+        return builder.ToImmutable();
     }
 
     private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)

@@ -1,4 +1,5 @@
 using MediaLens.Models;
+using MediaLens.Tests.Integration.Extensions;
 
 namespace MediaLens.Tests.Integration;
 
@@ -20,7 +21,7 @@ public class MediaLensIntegrationTests
 
         // Assert
         await Assert.That(info).IsNotNull();
-        await Verify(info)
+        await Verify(info.ToSnapshotModel())
             .ScrubMember<GeneralTrack>(g => g.FileName);
     }
 
@@ -40,7 +41,7 @@ public class MediaLensIntegrationTests
         await Assert.That(success).IsTrue();
         await Assert.That(info).IsNotNull();
         
-        await Verify(info)
+        await Verify(info.ToSnapshotModel())
             .ScrubMember<GeneralTrack>(g => g.FileName);
     }
 }
