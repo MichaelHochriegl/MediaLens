@@ -64,6 +64,18 @@ internal static partial class MediaInfoNative
             ? OptionW(handle, option, value)
             : OptionA(handle, option, value);
 
+    internal static void OpenBufferInit(MediaInfoHandle handle, ulong fileSize, ulong fileOffset)
+        => OpenBufferInitImpl(handle, fileSize, fileOffset);
+
+    internal static bool OpenBufferContinue(MediaInfoHandle handle, byte[] buffer, nuint bufferSize)
+        => OpenBufferContinueImpl(handle, buffer, bufferSize) != 0;
+
+    internal static bool OpenBufferFinalize(MediaInfoHandle handle)
+        => OpenBufferFinalizeImpl(handle) != 0;
+
+    internal static ulong OpenBufferContinueGoToGet(MediaInfoHandle handle)
+        => OpenBufferContinueGoToGetImpl(handle);
+
     internal static string PtrToString(IntPtr ptr)
     {
         if (ptr == IntPtr.Zero)
@@ -115,4 +127,16 @@ internal static partial class MediaInfoNative
 
     [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Option", StringMarshalling = StringMarshalling.Utf16)]
     private static partial IntPtr OptionW(MediaInfoHandle handle, string option, string? value);
+
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Open_Buffer_Init")]
+    private static partial void OpenBufferInitImpl(MediaInfoHandle handle, ulong fileSize, ulong fileOffset);
+
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Open_Buffer_Continue")]
+    private static partial nuint OpenBufferContinueImpl(MediaInfoHandle handle, byte[] buffer, nuint bufferSize);
+
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Open_Buffer_Finalize")]
+    private static partial nuint OpenBufferFinalizeImpl(MediaInfoHandle handle);
+
+    [LibraryImport(LibraryName, EntryPoint = "MediaInfo_Open_Buffer_Continue_GoTo_Get")]
+    private static partial ulong OpenBufferContinueGoToGetImpl(MediaInfoHandle handle);
 }
