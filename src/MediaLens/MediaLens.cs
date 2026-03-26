@@ -39,7 +39,7 @@ public sealed class MediaLens : IMediaLens
 
             MediaInfoNative.Option(handle, "Language", "raw");
 
-            if (MediaInfoNative.Open(handle, filePath) == 0)
+            if (!TryOpen(handle, filePath))
             {
                 throw new MediaLensOpenException(filePath, "Failed to open the media file.");
             }
@@ -47,7 +47,7 @@ public sealed class MediaLens : IMediaLens
             try
             {
                 return new MediaInfo(
-                    ParseGeneral(handle),
+                    ParseGeneral(handle, filePath),
                     ParseVideoTracks(handle),
                     ParseAudioTracks(handle),
                     ParseTextTracks(handle)
@@ -74,9 +74,57 @@ public sealed class MediaLens : IMediaLens
         }
     }
 
-    private GeneralTrack ParseGeneral(MediaInfoHandle handle)
+    private static bool TryOpen(MediaInfoHandle handle, string filePath)
+    {
+        if (MediaInfoNative.Open(handle, filePath) != 0)
+        {
+            return true;
+        }
+
+        return !OperatingSystem.IsWindows() && TryOpenWithStream(handle, filePath);
+    }
+
+    private static bool TryOpenWithStream(MediaInfoHandle handle, string filePath)
+    {
+        const int bufferSize = 64 * 1024;
+        var buffer = new byte[bufferSize];
+
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize,
+            FileOptions.SequentialScan);
+
+        MediaInfoNative.OpenBufferInit(handle, (ulong)stream.Length, 0);
+
+        while (true)
+        {
+            var read = stream.Read(buffer, 0, buffer.Length);
+            if (read <= 0)
+            {
+                break;
+            }
+
+            if (!MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read))
+            {
+                return false;
+            }
+
+            var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
+            if (goTo != ulong.MaxValue)
+            {
+                stream.Seek((long)goTo, SeekOrigin.Begin);
+            }
+        }
+
+        return MediaInfoNative.OpenBufferFinalize(handle);
+    }
+
+    private GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
         => new(
-            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? string.Empty,
+            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileNameWithoutExtension(filePath),
             Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
             Duration: GetTimeSpan(handle, MediaInfoNative.StreamKind.General, 0, "Duration"),
             FileSize: GetLong(handle, MediaInfoNative.StreamKind.General, 0, "FileSize") is { } fileSizeBytes
@@ -97,7 +145,7 @@ public sealed class MediaLens : IMediaLens
         {
             return [];
         }
-        
+
         var builder = ImmutableArray.CreateBuilder<VideoTrack>(count);
 
         for (var i = 0; i < count; i++)
@@ -119,7 +167,7 @@ public sealed class MediaLens : IMediaLens
                     : null,
                 AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, i, "DisplayAspectRatio")
             );
-            
+
             builder.Add(track);
         }
 
@@ -134,7 +182,7 @@ public sealed class MediaLens : IMediaLens
         {
             return [];
         }
-        
+
         var builder = ImmutableArray.CreateBuilder<AudioTrack>(count);
 
         for (var i = 0; i < count; i++)
@@ -154,7 +202,7 @@ public sealed class MediaLens : IMediaLens
                     ? BitRate.CreateOrNull(bitRate)
                     : null
             );
-            
+
             builder.Add(track);
         }
 
@@ -180,7 +228,7 @@ public sealed class MediaLens : IMediaLens
                     ? Language.CreateOrNull(language)
                     : null
             );
-            
+
             builder.Add(track);
         }
 
