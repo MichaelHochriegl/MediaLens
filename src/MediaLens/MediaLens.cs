@@ -124,7 +124,7 @@ public sealed class MediaLens : IMediaLens
 
     private GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
         => new(
-            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileName(filePath),
+            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileNameWithoutExtension(filePath),
             Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
             Duration: GetTimeSpan(handle, MediaInfoNative.StreamKind.General, 0, "Duration"),
             FileSize: GetLong(handle, MediaInfoNative.StreamKind.General, 0, "FileSize") is { } fileSizeBytes

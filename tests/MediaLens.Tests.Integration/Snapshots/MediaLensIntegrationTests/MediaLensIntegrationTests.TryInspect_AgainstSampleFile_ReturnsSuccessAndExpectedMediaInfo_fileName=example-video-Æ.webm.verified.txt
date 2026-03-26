@@ -1,6 +1,6 @@
 ﻿{
   General: {
-    FileName: example-video-Æ.webm,
+    FileName: example-video-Æ,
     Format: WebM,
     Duration: 00:00:23.2700000,
     FileSize: {
