@@ -9,7 +9,7 @@ namespace MediaLens;
 
 public sealed class MediaLens : IMediaLens
 {
-    public MediaInfo Inspect(string filePath)
+    public async Task<MediaInfo> InspectAsync(string filePath, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
@@ -38,8 +38,9 @@ public sealed class MediaLens : IMediaLens
             }
 
             MediaInfoNative.Option(handle, "Language", "raw");
+            var isOpened = await TryOpenWithStream(handle, filePath, ct);
 
-            if (!TryOpen(handle, filePath))
+            if (!isOpened)
             {
                 throw new MediaLensOpenException(filePath, "Failed to open the media file.");
             }
@@ -60,36 +61,12 @@ public sealed class MediaLens : IMediaLens
         }
     }
 
-    public bool TryInspect(string filePath, out MediaInfo? info)
-    {
-        try
-        {
-            info = Inspect(filePath);
-            return true;
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or MediaLensException)
-        {
-            info = null;
-            return false;
-        }
-    }
-
-    private static bool TryOpen(MediaInfoHandle handle, string filePath)
-    {
-        if (MediaInfoNative.Open(handle, filePath) != 0)
-        {
-            return true;
-        }
-
-        return !OperatingSystem.IsWindows() && TryOpenWithStream(handle, filePath);
-    }
-
-    private static bool TryOpenWithStream(MediaInfoHandle handle, string filePath)
+    private static async Task<bool> TryOpenWithStream(MediaInfoHandle handle, string filePath, CancellationToken ct = default)
     {
         const int bufferSize = 64 * 1024;
         var buffer = new byte[bufferSize];
 
-        using var stream = new FileStream(
+        await using var stream = new FileStream(
             filePath,
             FileMode.Open,
             FileAccess.Read,
@@ -101,7 +78,7 @@ public sealed class MediaLens : IMediaLens
 
         while (true)
         {
-            var read = stream.Read(buffer, 0, buffer.Length);
+            var read = await stream.ReadAsync(buffer, ct);
             if (read <= 0)
             {
                 break;
@@ -137,7 +114,7 @@ public sealed class MediaLens : IMediaLens
                 : null
         );
 
-    private ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
+    private static ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
@@ -174,7 +151,7 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
+    private static ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
@@ -209,7 +186,7 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
+    private static ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
@@ -235,10 +212,10 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
+    private static int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
         => MediaInfoNative.CountGet(handle, kind, nuint.MaxValue);
 
-    private string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
     {
         var ptr = MediaInfoNative.Get(
             handle,
@@ -252,26 +229,27 @@ public sealed class MediaLens : IMediaLens
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => int.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => long.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => double.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => GetDouble(handle, kind, index, name) is { } ms
             ? TimeSpan.FromMilliseconds(ms)
             : null;
+    
 }
