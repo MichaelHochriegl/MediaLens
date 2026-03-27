@@ -99,7 +99,7 @@ public sealed class MediaLens : IMediaLens
         return MediaInfoNative.OpenBufferFinalize(handle);
     }
 
-    private GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
+    private static GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
         => new(
             FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileNameWithoutExtension(filePath),
             Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
