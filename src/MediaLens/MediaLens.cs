@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Immutable;
 using System.Globalization;
 using MediaLens.Exceptions;
@@ -64,39 +65,59 @@ public sealed class MediaLens : IMediaLens
     private static async Task<bool> TryOpenWithStream(MediaInfoHandle handle, string filePath, CancellationToken ct = default)
     {
         const int bufferSize = 64 * 1024;
-        var buffer = new byte[bufferSize];
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
-        await using var stream = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize,
-            FileOptions.SequentialScan);
-
-        MediaInfoNative.OpenBufferInit(handle, (ulong)stream.Length, 0);
-
-        while (true)
+        try
         {
-            var read = await stream.ReadAsync(buffer, ct);
-            if (read <= 0)
+            await using var stream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize,
+                FileOptions.Asynchronous);
+
+            var streamLength = (ulong)stream.Length;
+            MediaInfoNative.OpenBufferInit(handle, streamLength, 0);
+
+            while (true)
             {
-                break;
+                var read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
+                if (read <= 0)
+                {
+                    break;
+                }
+
+                if (!MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read))
+                {
+                    return false;
+                }
+
+                var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
+                if(!TryStreamPositioning(goTo, streamLength, stream)) return false;
             }
 
-            if (!MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read))
-            {
-                return false;
-            }
+            return MediaInfoNative.OpenBufferFinalize(handle);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
 
-            var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
-            if (goTo != ulong.MaxValue)
-            {
-                stream.Seek((long)goTo, SeekOrigin.Begin);
-            }
+    private static bool TryStreamPositioning(ulong goTo, ulong streamLength, FileStream stream)
+    {
+        if (goTo == ulong.MaxValue) return true;
+                
+        if (goTo > streamLength) return false;
+            
+        var currentPosition = (ulong)stream.Position;
+        if (goTo != currentPosition)
+        {
+            stream.Seek((long)goTo, SeekOrigin.Begin);
         }
 
-        return MediaInfoNative.OpenBufferFinalize(handle);
+        return true;
     }
 
     private static GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
