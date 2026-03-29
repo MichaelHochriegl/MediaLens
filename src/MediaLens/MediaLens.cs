@@ -88,9 +88,16 @@ public sealed class MediaLens : IMediaLens
                     break;
                 }
 
-                if (!MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read))
+                var state = MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read);
+
+                switch (state)
                 {
-                    return false;
+                    case MediaInfoBufferState.MoreDataRequired:
+                        break;
+                    case MediaInfoBufferState.EnoughDataRead:
+                        return MediaInfoNative.OpenBufferFinalize(handle);
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
 
                 var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
