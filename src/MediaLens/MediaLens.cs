@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Immutable;
 using System.Globalization;
 using MediaLens.Exceptions;
@@ -9,7 +10,7 @@ namespace MediaLens;
 
 public sealed class MediaLens : IMediaLens
 {
-    public MediaInfo Inspect(string filePath)
+    public async Task<MediaInfo> InspectAsync(string filePath, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
@@ -38,8 +39,9 @@ public sealed class MediaLens : IMediaLens
             }
 
             MediaInfoNative.Option(handle, "Language", "raw");
+            var isOpened = await TryOpenWithStream(handle, filePath, ct).ConfigureAwait(false);
 
-            if (!TryOpen(handle, filePath))
+            if (!isOpened)
             {
                 throw new MediaLensOpenException(filePath, "Failed to open the media file.");
             }
@@ -60,69 +62,72 @@ public sealed class MediaLens : IMediaLens
         }
     }
 
-    public bool TryInspect(string filePath, out MediaInfo? info)
-    {
-        try
-        {
-            info = Inspect(filePath);
-            return true;
-        }
-        catch (Exception ex) when (ex is FileNotFoundException or MediaLensException)
-        {
-            info = null;
-            return false;
-        }
-    }
-
-    private static bool TryOpen(MediaInfoHandle handle, string filePath)
-    {
-        if (MediaInfoNative.Open(handle, filePath) != 0)
-        {
-            return true;
-        }
-
-        return !OperatingSystem.IsWindows() && TryOpenWithStream(handle, filePath);
-    }
-
-    private static bool TryOpenWithStream(MediaInfoHandle handle, string filePath)
+    private static async Task<bool> TryOpenWithStream(MediaInfoHandle handle, string filePath, CancellationToken ct = default)
     {
         const int bufferSize = 64 * 1024;
-        var buffer = new byte[bufferSize];
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
-        using var stream = new FileStream(
-            filePath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            bufferSize,
-            FileOptions.SequentialScan);
-
-        MediaInfoNative.OpenBufferInit(handle, (ulong)stream.Length, 0);
-
-        while (true)
+        try
         {
-            var read = stream.Read(buffer, 0, buffer.Length);
-            if (read <= 0)
+            await using var stream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize,
+                FileOptions.Asynchronous);
+
+            var streamLength = (ulong)stream.Length;
+            MediaInfoNative.OpenBufferInit(handle, streamLength, 0);
+
+            while (true)
             {
-                break;
+                var read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
+                if (read <= 0)
+                {
+                    break;
+                }
+
+                var state = MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read);
+
+                switch (state)
+                {
+                    case MediaInfoBufferState.MoreDataRequired:
+                        break;
+                    case MediaInfoBufferState.EnoughDataRead:
+                        return MediaInfoNative.OpenBufferFinalize(handle);
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
+                if(!TryStreamPositioning(goTo, streamLength, stream)) return false;
             }
 
-            if (!MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read))
-            {
-                return false;
-            }
-
-            var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
-            if (goTo != ulong.MaxValue)
-            {
-                stream.Seek((long)goTo, SeekOrigin.Begin);
-            }
+            return MediaInfoNative.OpenBufferFinalize(handle);
         }
-
-        return MediaInfoNative.OpenBufferFinalize(handle);
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
     }
 
-    private GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
+    private static bool TryStreamPositioning(ulong goTo, ulong streamLength, FileStream stream)
+    {
+        if (goTo == ulong.MaxValue) return true;
+                
+        if (goTo > streamLength) return false;
+            
+        var currentPosition = (ulong)stream.Position;
+        if (goTo != currentPosition)
+        {
+            stream.Seek((long)goTo, SeekOrigin.Begin);
+        }
+
+        return true;
+    }
+
+    private static GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
         => new(
             FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileNameWithoutExtension(filePath),
             Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
@@ -137,7 +142,7 @@ public sealed class MediaLens : IMediaLens
                 : null
         );
 
-    private ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
+    private static ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
 
@@ -174,7 +179,7 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
+    private static ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
 
@@ -209,7 +214,7 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
+    private static ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
     {
         var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
 
@@ -235,10 +240,10 @@ public sealed class MediaLens : IMediaLens
         return builder.ToImmutable();
     }
 
-    private int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
+    private static int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
         => MediaInfoNative.CountGet(handle, kind, nuint.MaxValue);
 
-    private string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
     {
         var ptr = MediaInfoNative.Get(
             handle,
@@ -252,26 +257,27 @@ public sealed class MediaLens : IMediaLens
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => int.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => long.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => double.TryParse(GetString(handle, kind, index, name),
             NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
             ? v
             : null;
 
-    private TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    private static TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
         => GetDouble(handle, kind, index, name) is { } ms
             ? TimeSpan.FromMilliseconds(ms)
             : null;
+    
 }

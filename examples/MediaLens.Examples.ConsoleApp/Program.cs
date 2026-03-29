@@ -1,8 +1,8 @@
 ﻿var mediaLens = new MediaLens.MediaLens();
 
-var file = Path.Combine(Directory.GetCurrentDirectory(), "example-video.webm");
+var file = Path.Combine(Directory.GetCurrentDirectory(), "example-video-Æ.webm");
 Console.WriteLine($"Analyzing file: {file}");
-var mediaInfo = mediaLens.Inspect(file);
+var mediaInfo = await mediaLens.InspectAsync(file);
 
 Console.WriteLine(mediaInfo);
 

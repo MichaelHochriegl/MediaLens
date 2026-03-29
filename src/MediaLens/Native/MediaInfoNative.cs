@@ -67,8 +67,14 @@ internal static partial class MediaInfoNative
     internal static void OpenBufferInit(MediaInfoHandle handle, ulong fileSize, ulong fileOffset)
         => OpenBufferInitImpl(handle, fileSize, fileOffset);
 
-    internal static bool OpenBufferContinue(MediaInfoHandle handle, byte[] buffer, nuint bufferSize)
-        => OpenBufferContinueImpl(handle, buffer, bufferSize) != 0;
+    internal static MediaInfoBufferState OpenBufferContinue(MediaInfoHandle handle, byte[] buffer, nuint bufferSize)
+    {
+        var result = OpenBufferContinueImpl(handle, buffer, bufferSize);
+        
+        return (result & 1) != 0
+            ? MediaInfoBufferState.EnoughDataRead
+            : MediaInfoBufferState.MoreDataRequired;
+    }
 
     internal static bool OpenBufferFinalize(MediaInfoHandle handle)
         => OpenBufferFinalizeImpl(handle) != 0;

@@ -4,26 +4,35 @@ using MediaLens.Models;
 namespace MediaLens;
 
 /// <summary>
-/// Provides operations for inspecting media files and retrieving metadata
+/// Provides operations for inspecting media sources and retrieving metadata
 /// about their general, video, audio, and text streams.
 /// </summary>
 public interface IMediaLens
 {
     /// <summary>
-    /// Inspects the specified media file and returns its extracted metadata.
+    /// Asynchronously inspects the media file at the specified path and returns its extracted metadata.
     /// </summary>
+    /// <remarks>
+    /// This method opens the file using the file system and will use a stream-based native loading path
+    /// internally to support file names containing special characters.
+    /// </remarks>
     /// <param name="filePath">The path to the media file to inspect.</param>
+    /// <param name="ct">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>
-    /// A <see cref="MediaInfo"/> instance containing metadata extracted from the media file.
+    /// A task that represents the asynchronous operation. When complete, the task result contains a
+    /// <see cref="MediaInfo"/> instance with metadata extracted from the media file.
     /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="filePath"/> is <c>null</c>.
+    /// Thrown when <paramref name="filePath"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
     /// Thrown when <paramref name="filePath"/> is empty or consists only of white-space characters.
     /// </exception>
     /// <exception cref="FileNotFoundException">
     /// Thrown when the file specified by <paramref name="filePath"/> does not exist.
+    /// </exception>
+    /// <exception cref="OperationCanceledException">
+    /// Thrown when the operation is canceled via <paramref name="ct"/>.
     /// </exception>
     /// <exception cref="MediaLensNativeDependencyException">
     /// Thrown when the required native MediaInfo dependency cannot be loaded.
@@ -35,26 +44,7 @@ public interface IMediaLens
     /// Thrown when the file exists but cannot be opened or parsed as media.
     /// </exception>
     /// <exception cref="MediaLensException">
-    /// Thrown when an inspection error occurs.
+    /// Thrown when an inspection error occurs that is specific to MediaLens.
     /// </exception>
-    MediaInfo Inspect(string filePath);
-
-    /// <summary>
-    /// Attempts to inspect the specified media file.
-    /// </summary>
-    /// <param name="filePath">The path to the media file to inspect.</param>
-    /// <param name="info">
-    /// When this method returns, contains the extracted <see cref="MediaInfo"/> if the operation
-    /// succeeds; otherwise, <c>null</c>.
-    /// </param>
-    /// <returns>
-    /// <c>true</c> if the media file was successfully inspected; otherwise, <c>false</c>.
-    /// </returns>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="filePath"/> is <c>null</c>.
-    /// </exception>
-    /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="filePath"/> is empty or consists only of white-space characters.
-    /// </exception>
-    bool TryInspect(string filePath, out MediaInfo? info);
+    Task<MediaInfo> InspectAsync(string filePath, CancellationToken ct = default);
 }
