@@ -39,7 +39,7 @@ public sealed class MediaLens : IMediaLens
             }
 
             MediaInfoNative.Option(handle, "Language", "raw");
-            var isOpened = await TryOpenWithStream(handle, filePath, ct);
+            var isOpened = await TryOpenWithStream(handle, filePath, ct).ConfigureAwait(false);
 
             if (!isOpened)
             {
