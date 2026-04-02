@@ -1,16 +1,23 @@
 # MediaLens
 
-MediaLens is a managed .NET wrapper around the native [MediaInfo](https://mediaarea.net/en/MediaInfo) library.
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![NuGet](https://img.shields.io/nuget/v/MediaLens)](https://www.nuget.org/packages/MediaLens/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![CI](https://github.com/MichaelHochriegl/MediaLens/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelHochriegl/MediaLens/actions/workflows/ci.yml)
 
-It provides a simple API for inspecting media files and extracting metadata such as:
+MediaLens is a small .NET wrapper around the native [MediaInfo](https://mediaarea.net/en/MediaInfo) library.
+It comes with the bundled native binaries for (by using [MediaLens.Native](https://github.com/MichaelHochriegl/MediaLens.Native)):
+- Windows x64
+- Linux x64
+- macOS x64
+- macOS arm64
 
-- container format
-- duration
-- file size
-- overall bitrate
-- video stream details
-- audio stream details
-- text/subtitle stream details
+## Features
+
+- async `InspectAsync` API
+- strongly typed metadata models
+- dependency injection support
+- native MediaInfo integration
 
 ## Installation
 
@@ -18,7 +25,7 @@ It provides a simple API for inspecting media files and extracting metadata such
 dotnet add package MediaLens
 ```
 
-If you want to register it through dependency injection:
+If you want DI support:
 
 ```bash
 dotnet add package MediaLens.DependencyInjection
@@ -30,8 +37,7 @@ dotnet add package MediaLens.DependencyInjection
 using MediaLens;
 
 var mediaLens = new MediaLens.MediaLens();
-
-var mediaInfo = mediaLens.Inspect("movie.mkv");
+var mediaInfo = await mediaLens.InspectAsync("media.mp4");
 
 Console.WriteLine($"File: {mediaInfo.General.FileName}");
 Console.WriteLine($"Format: {mediaInfo.General.Format}");
@@ -55,125 +61,50 @@ foreach (var text in mediaInfo.TextTracks)
 
 ## Dependency injection
 
-If your application uses `Microsoft.Extensions.DependencyInjection`, you can register `IMediaLens` like this:
-
 ```csharp
 using MediaLens.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddMediaLens();
 ```
-This will register `IMediaLens` as a singleton.
 
-You can also choose a specific lifetime:
+`AddMediaLens()` registers `IMediaLens` as a singleton by default.
+
+You can also choose a different lifetime:
 
 ```csharp
 using MediaLens.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddMediaLens(ServiceLifetime.Scoped);
 ```
 
-Then consume it through `IMediaLens`:
-
-```csharp
-using MediaLens;
-
-public sealed class MediaInspector(IMediaLens mediaLens)
-{
-    public void Print(string path)
-    {
-        var info = mediaLens.Inspect(path);
-        Console.WriteLine(info.General.Format);
-    }
-}
-```
-
-## API overview
-
-The main abstraction is `IMediaLens`:
-
-```csharp
-MediaInfo Inspect(string filePath);
-bool TryInspect(string filePath, out MediaInfo? info);
-```
-
-### Inspect
-
-`Inspect` returns a `MediaInfo` instance for a file and throws if the file cannot be inspected.
-
-Use this when failure should be explicit.
-
-### TryInspect
-
-`TryInspect` returns `false` instead of throwing for expected inspection failures.
-
-Use this when you prefer a simpler success/failure flow.
-
 ## Returned metadata
 
-`MediaInfo` contains:
+`InspectAsync()` returns a `MediaInfo` object with:
 
-- `General`
-- `VideoTracks`
-- `AudioTracks`
-- `TextTracks`
-
-A typical inspection result gives you access to values such as:
-
-### General
-
-- file name
-- format
-- duration
-- file size
-- overall bitrate mode
-- overall bitrate
-
-### Video tracks
-
-- format
-- codec id
-- language
-- frame rate
-- frame rate mode
-- width
-- height
-- bitrate
-- aspect ratio
-
-### Audio tracks
-
-- format
-- codec id
-- language
-- channel count
-- channel layout
-- sampling rate
-- bitrate
-
-### Text tracks
-
-- format
-- language
+- general file metadata
+- video track metadata
+- audio track metadata
+- text/subtitle track metadata
 
 ## Error handling
 
-MediaLens exposes a small set of exceptions for common failure cases:
+Common exceptions include:
 
-- `MediaLensException` (all of the exceptions further below extend this)
+- `MediaLensException`
 - `MediaLensOpenException`
 - `MediaLensHandleException`
 - `MediaLensNativeDependencyException`
 
-
 ## Example
 
-A minimal example is included in the repository under `examples/`.
+A minimal example is available under `examples/`.
 
-## License & attribution
-- **This repository and packaging code**: MIT (`LICENSE`).
-- **MediaInfoLib (bundled in the native binaries of the referenced nuget MediaLens.Native)**: BSD-2-Clause (`LICENSE.MediaInfo`), included in the package.
+## License
+
+- **Repository code**: MIT (`LICENSE`)
+- **MediaInfoLib**: BSD-2-Clause (`LICENSE.MediaInfo`)
+
+MediaInfo is used through the bundled native binaries from `MediaLens.Native`.
