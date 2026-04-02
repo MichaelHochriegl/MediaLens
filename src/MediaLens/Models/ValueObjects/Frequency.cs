@@ -73,5 +73,5 @@ public readonly record struct Frequency : IComparable<Frequency>
     /// Returns the string representation of the current frequency.
     /// </summary>
     /// <returns>A string formatted in <b>kilohertz</b> (kHz).</returns>
-    public override string ToString() => $"{Kilohertz:0.###} kHz";
+    public override string ToString() => Kilohertz.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + " kHz";
 }
