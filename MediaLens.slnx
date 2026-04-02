@@ -1,1 +1,13 @@
-<Solution />
+<Solution>
+  <Folder Name="/examples/">
+    <Project Path="examples/MediaLens.Examples.ConsoleApp/MediaLens.Examples.ConsoleApp.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/MediaLens.DependencyInjection/MediaLens.DependencyInjection.csproj" />
+    <Project Path="src/MediaLens/MediaLens.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MediaLens.Tests.Integration/MediaLens.Tests.Integration.csproj" />
+    <Project Path="tests/MediaLens.Tests.Unit/MediaLens.Tests.Unit.csproj" />
+  </Folder>
+</Solution>

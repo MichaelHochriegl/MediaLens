@@ -1,0 +1,283 @@
+using System.Buffers;
+using System.Collections.Immutable;
+using System.Globalization;
+using MediaLens.Exceptions;
+using MediaLens.Models;
+using MediaLens.Models.ValueObjects;
+using MediaLens.Native;
+
+namespace MediaLens;
+
+public sealed class MediaLens : IMediaLens
+{
+    public async Task<MediaInfo> InspectAsync(string filePath, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException("Media file not found.", filePath);
+        }
+
+        MediaInfoHandle handle;
+        try
+        {
+            handle = MediaInfoNative.New();
+        }
+        catch (Exception ex) when (ex is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
+        {
+            throw new MediaLensNativeDependencyException(
+                "Failed to load the native MediaInfo dependency. Ensure the correct native library is available for the current OS/architecture.",
+                ex);
+        }
+
+        using (handle)
+        {
+            if (handle.IsInvalid)
+            {
+                throw new MediaLensHandleException("Failed to create a native MediaInfo handle.");
+            }
+
+            MediaInfoNative.Option(handle, "Language", "raw");
+            var isOpened = await TryOpenWithStream(handle, filePath, ct).ConfigureAwait(false);
+
+            if (!isOpened)
+            {
+                throw new MediaLensOpenException(filePath, "Failed to open the media file.");
+            }
+
+            try
+            {
+                return new MediaInfo(
+                    ParseGeneral(handle, filePath),
+                    ParseVideoTracks(handle),
+                    ParseAudioTracks(handle),
+                    ParseTextTracks(handle)
+                );
+            }
+            finally
+            {
+                MediaInfoNative.Close(handle);
+            }
+        }
+    }
+
+    private static async Task<bool> TryOpenWithStream(MediaInfoHandle handle, string filePath, CancellationToken ct = default)
+    {
+        const int bufferSize = 64 * 1024;
+        var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+
+        try
+        {
+            await using var stream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize,
+                FileOptions.Asynchronous);
+
+            var streamLength = (ulong)stream.Length;
+            MediaInfoNative.OpenBufferInit(handle, streamLength, 0);
+
+            while (true)
+            {
+                var read = await stream.ReadAsync(buffer, ct).ConfigureAwait(false);
+                if (read <= 0)
+                {
+                    break;
+                }
+
+                var state = MediaInfoNative.OpenBufferContinue(handle, buffer, (nuint)read);
+
+                switch (state)
+                {
+                    case MediaInfoBufferState.MoreDataRequired:
+                        break;
+                    case MediaInfoBufferState.EnoughDataRead:
+                        return MediaInfoNative.OpenBufferFinalize(handle);
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                var goTo = MediaInfoNative.OpenBufferContinueGoToGet(handle);
+                if(!TryStreamPositioning(goTo, streamLength, stream)) return false;
+            }
+
+            return MediaInfoNative.OpenBufferFinalize(handle);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    private static bool TryStreamPositioning(ulong goTo, ulong streamLength, FileStream stream)
+    {
+        if (goTo == ulong.MaxValue) return true;
+                
+        if (goTo > streamLength) return false;
+            
+        var currentPosition = (ulong)stream.Position;
+        if (goTo != currentPosition)
+        {
+            stream.Seek((long)goTo, SeekOrigin.Begin);
+        }
+
+        return true;
+    }
+
+    private static GeneralTrack ParseGeneral(MediaInfoHandle handle, string filePath)
+        => new(
+            FileName: GetString(handle, MediaInfoNative.StreamKind.General, 0, "FileName") ?? Path.GetFileNameWithoutExtension(filePath),
+            Format: GetString(handle, MediaInfoNative.StreamKind.General, 0, "Format") ?? string.Empty,
+            Duration: GetTimeSpan(handle, MediaInfoNative.StreamKind.General, 0, "Duration"),
+            FileSize: GetLong(handle, MediaInfoNative.StreamKind.General, 0, "FileSize") is { } fileSizeBytes
+                ? ByteSize.CreateOrNull(fileSizeBytes)
+                : null,
+            OverallBitRateMode: GetString(handle, MediaInfoNative.StreamKind.General, 0, "OverallBitRate_Mode"),
+            OverallBitRate: GetDouble(handle, MediaInfoNative.StreamKind.General, 0, "OverallBitRate") is
+                { } overallBitRate
+                ? BitRate.CreateOrNull(overallBitRate)
+                : null
+        );
+
+    private static ImmutableArray<VideoTrack> ParseVideoTracks(MediaInfoHandle handle)
+    {
+        var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Video));
+
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var builder = ImmutableArray.CreateBuilder<VideoTrack>(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            var track = new VideoTrack(
+                Format: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Format") ?? string.Empty,
+                CodecId: GetString(handle, MediaInfoNative.StreamKind.Video, i, "CodecID") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Video, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null,
+                FrameRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, i, "FrameRate") is { } frameRate
+                    ? FrameRate.CreateOrNull(frameRate)
+                    : null,
+                FrameRateMode: GetString(handle, MediaInfoNative.StreamKind.Video, i, "FrameRate_Mode"),
+                Width: GetInt(handle, MediaInfoNative.StreamKind.Video, i, "Width"),
+                Height: GetInt(handle, MediaInfoNative.StreamKind.Video, i, "Height"),
+                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Video, i, "BitRate") is { } bitRate
+                    ? BitRate.CreateOrNull(bitRate)
+                    : null,
+                AspectRatio: GetString(handle, MediaInfoNative.StreamKind.Video, i, "DisplayAspectRatio")
+            );
+
+            builder.Add(track);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static ImmutableArray<AudioTrack> ParseAudioTracks(MediaInfoHandle handle)
+    {
+        var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Audio));
+
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var builder = ImmutableArray.CreateBuilder<AudioTrack>(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            var track = new AudioTrack(
+                Format: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Format") ?? string.Empty,
+                CodecId: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "CodecID") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null,
+                Channels: GetInt(handle, MediaInfoNative.StreamKind.Audio, i, "Channels"),
+                ChannelLayout: GetString(handle, MediaInfoNative.StreamKind.Audio, i, "ChannelLayout"),
+                SamplingRate: GetDouble(handle, MediaInfoNative.StreamKind.Audio, i, "SamplingRate") is { } samplingRate
+                    ? Frequency.CreateOrNull(samplingRate)
+                    : null,
+                BitRate: GetDouble(handle, MediaInfoNative.StreamKind.Audio, i, "BitRate") is { } bitRate
+                    ? BitRate.CreateOrNull(bitRate)
+                    : null
+            );
+
+            builder.Add(track);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static ImmutableArray<TextTrack> ParseTextTracks(MediaInfoHandle handle)
+    {
+        var count = Math.Max(0, GetStreamCount(handle, MediaInfoNative.StreamKind.Text));
+
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        var builder = ImmutableArray.CreateBuilder<TextTrack>(count);
+
+        for (var i = 0; i < count; i++)
+        {
+            var track = new TextTrack(
+                Format: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Format") ?? string.Empty,
+                Language: GetString(handle, MediaInfoNative.StreamKind.Text, i, "Language") is { } language
+                    ? Language.CreateOrNull(language)
+                    : null
+            );
+
+            builder.Add(track);
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static int GetStreamCount(MediaInfoHandle handle, MediaInfoNative.StreamKind kind)
+        => MediaInfoNative.CountGet(handle, kind, nuint.MaxValue);
+
+    private static string? GetString(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+    {
+        var ptr = MediaInfoNative.Get(
+            handle,
+            kind,
+            index,
+            name,
+            MediaInfoNative.InfoKind.Text,
+            MediaInfoNative.InfoKind.Name);
+
+        var value = MediaInfoNative.PtrToString(ptr);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static int? GetInt(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => int.TryParse(GetString(handle, kind, index, name),
+            NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+            ? v
+            : null;
+
+    private static long? GetLong(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => long.TryParse(GetString(handle, kind, index, name),
+            NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+            ? v
+            : null;
+
+    private static double? GetDouble(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => double.TryParse(GetString(handle, kind, index, name),
+            NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+            ? v
+            : null;
+
+    private static TimeSpan? GetTimeSpan(MediaInfoHandle handle, MediaInfoNative.StreamKind kind, int index, string name)
+        => GetDouble(handle, kind, index, name) is { } ms
+            ? TimeSpan.FromMilliseconds(ms)
+            : null;
+    
+}
